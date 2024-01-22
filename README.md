@@ -1,7 +1,7 @@
 # MirrorInImageEditorBlender
 An addon for blender that allows mirroring of the image in the image editor
 
-Can install by from Blender's addon menu by pressing install and then selecting the python file as the addon.
+Can install by from Blender's addon menu by pressing install and then selecting the python file as the addon. Then check the box for the addon that is added.
 You can find the panel inside the Image Editor window, where it is called "Mirroring"
 
 ## How to use:
