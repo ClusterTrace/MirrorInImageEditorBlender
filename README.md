@@ -4,6 +4,17 @@ An addon for blender that allows mirroring of the image in the image editor
 Can install by from Blender's addon menu by pressing install and then selecting the python file as the addon.
 You can find the panel inside the Image Editor window, where it is called "Mirroring"
 
+How to use:
+1. Have an image editor window open in blender with a texture selected
+2. Snapshot the image in the image editor using the "Snapshot" button (make sure an object is selected in the mirror settings if you want to mirror in 3D)
+3. Draw on the texture in whatever method you prefer (examples include using the texture editing mode on a model or the paint mode in the image editor)
+4. Press the mirror button of your choice for your preferred outcome
+  a. press "Mirror Changes 2D" if you are mirroring in 2D (don't forget to play around with the 2D positions and angle that determines the line it mirrors over (defaults to a horizontal line))
+  b. press "Mirror Changes 2D As Mask" if you want what you drew to be a mask for what should be mirrored in 2D
+  c. Press "Mirror Changes" if you are mirroring in 3D (don't forget to play around with the world axis to mirror over)
+  d. Press "Mirror Changes As Mask"if you want what you drew to be a mask for what should be mirrored in 3D
+5. If you are happy with the changes made once the mirroring finished, snapshot again to ensure they aren't reverted in future mirrorings. Else, you can hit "Revert to Snapshot" to undo what was changed.
+
 Current Features:
 - Can snapshot the original image using the "Snapshot" button, which will be used to determine what is mirrored in the other features.
   - Can revert to this snapshot using the "Revert To Snapshot" button
