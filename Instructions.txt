@@ -1,0 +1,44 @@
+An important note before utilizing the addon is it is likely buggy, so remember to save your work regularly and keep backups of both the blender project and textures.
+
+Find the panel added by the addon in the image editor. The panel is marked "Mirroring".
+
+To use most of the features of the mirroring, some things have to be setup first in the panels.
+A snapshot (copy of the pixels at that moment) needs to be taken of the wanted texture (whichever is currently selected in the image editor).
+To do that, first select the object in the "Mirror Settings" that is used for the 3D mirroring and the wanted UV map (the default UVMap should work if no custom UV map was added or wanted).
+Once that is done, a snapshot can be made by pressing the "Snapshot" button in the "Mirror Settings".
+Pressing "Rever to Snapshot" will update the image to be like how it was at the time "Snapshot" was pressed.
+
+There are two different mirroing methods offered by the addon: 2D mirroring and 3D mirroring. Each having a few options.
+
+2D Mirroring:
+2D mirring is done by mirroring pixels over a line in the image editor. Useful for symettrical UV mapped items.
+The symmetry line can be viewed by checking the "Show Symmetry Line" box in the "Mirror 2D Settings". There are thickness and color options for the line.
+The line does not have to be visible to work. The visible line is simply a representation of the line created by the 2D point (represented by the "2D X Position"" and "2D Y Position"" float bars and the "Axis Angle" in the "Mirror 2D Settings").
+"2D X Position" and "2D Y Position" control the point that acts as the center of the line of symmetry.
+"Axis angle" controls the angle of the line. 0 degrees means the line is horizontal. 90 degrees would mean the line is vertical.
+"Mirror Changes 2D" will take a new snapshot of the image and compare it to the original snapshot taken in "Mirror Settings". Whatever is different is what is mirrored over the symmetry line. That means changes are mirrored.
+"Mirror Changes 2D As Mask" works similarly to "Mirror Changes 2D", but instead of mirroring what is different/changes, the difference or changes act as a mask for what should be mirrored (meaning what is masked by the changes is what is mirrored over the symmetry line). Useful if what needs to be mirrored was already drawn, such as in another art program.
+
+3D Mirroring:
+3D mirroring is done by using the given object and UV map in "Mirror Settings" instead of finding a mirror point in the image editor via the 2D representation.
+The 3D mirroring can be done either over the X, Y, or Z axis (denoted by "Current Selected Axis" in the "Mirror 3D Settings" and chosen axis is done using the X, Y, or Z buttons in "Mirror 3D Settings").
+While not required for some things to work, it is recommended that the object used for the mirroring be at the world origin and not rotated.
+Overlapping UV islands can also cause unwanted behavior in the mirroring process.
+"Mirror Changes" in "Mirror 3D Settings" will take a snapshot of the current image again and compare it to the original from "Mirror Settings". What ever is different is mirrored using the 3D object.
+Warning for "Mirror Changes" and "Mirror Changes As Mask": the 3D mirroring done by those functions can be very slow and might seemingly make blender freeze while the computation is being done. It is recommended to try using "Mirror Changes Using Baking With Mask" instead as it is faster.
+"Mirror Changes As Mask" in "Mirror 3D Settings" works similarly to "Mirror Changes", but instead of mirroring what is different/changes, the difference acts as a mask for what should be mirrored (meaning what is masked by the changes/difference will be mirrored). Useful if what needs to be mirrored was already drawn, such as in another art program.
+"Face Selection Method" determines what faces are checked by "Mirror Changes" or "Mirror Changes As Mask" in "Mirror 3D Settings".
+The "All Faces" face selection method will go over all faces of the given model.
+The "Edit Mode Selection" will use the currently selected faces in Edit mode of the chosen object in "Mirror Settings". This method can speed up the mirroring process by reducing the number of faces to sort through, but requires more effort in selecting faces that the mirroring can happen on (recommend selecting the faces symmetrically to prevent parts not mirroring).
+"Create Mirror Map" creates a mapping that stores what pixels correspond to mirrored parts. This process can be very slow, but speeds up the use of "Mirror Changes" and "Mirror Changes As Mask", but the it isn't recommended to use the button as "Mirror Changes" and "Mirror Changes As Mask" generate parts of the mapping automatically.
+"Clear Mirror Map" is there to remove the mapping. Useful if the mapping is causing issues, such as when an object or uv was updated.
+"Mirror Changes Using Baking With Mask" is the recommended 3D Mirroring method. The method works by creating a duplicate of the object that is reversed over the chosen axis (shown by "Current Selected Axis") and using blender's built in baking system to update the texture whereever the mask was.
+As noted, the mask in "Mirror Changes Using Baking With Mask" works differently, as what is masked is what is filled in by the bake. It is recommended to set the Cycles renderer to use the gpu to speed up the baking.
+"Cage Extension" extends or thickens the duplicate of the object used in the baking to help prevent z-fighting (which will cause artifacts in the mirror like parts not mirroring or being blank). Value should be close to 0 as possible without causing z-fighting (default of 0.02 should work in most cases).
+
+Pixel Gap Filling:
+Sometimes mirroring using "Mirror Changes" or "Mirror Changes As Maks" either for 3D or 2D can cause small pixel sized gaps to appear in the mirror. These are caused by distortion either by the angle of the mirror (for 2D mirroring) or distortion from UV map to 3D space (for 3D mirroring).
+"Pixel Gap Fill" will attempt to fill in the pixel gaps made by any of the mirror methods except "Mirror Changes Using Baking With Mask".
+"Pixel Gap Fill Vertical Lines" is used to try and fill pixel gaps that appear to be vertical lines (often occur in 3D mirroring on rounder objects). This setting overrides the "Pixel Gap Fill Threshold".
+"Pixel Gap Fill Threshold" notes the number of pixels updated by a mirroring that must be adjacent (directly touching) to the current pixel for the current pixel to be updated. The default of 6 should work in most causes.
+"Pixel Gap Fill Self Blend" will blend the color of the current pixel with the adjacent pixels as well for determining the appearance of the fill. Not recommended to use.
