@@ -2,7 +2,9 @@
 An addon for blender that allows mirroring of the image in the image editor
 
 Can install by from Blender's addon menu by pressing install and then selecting the python file as the addon. Then check the box for the addon that is added.
-You can find the panel inside the Image Editor window, where it is called "Mirroring"
+You can find the panel inside the Image Editor window, where it is called "Mirroring".
+
+Parts of the readme and other descriptions are slightly out of date. The instructions.txt should give info the newer stuff like the mirroring in 3D using baking and the symmetry line.
 
 ## How to use:
 1. Have an image editor window open in blender with a texture selected
