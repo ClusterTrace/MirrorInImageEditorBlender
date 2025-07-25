@@ -29,6 +29,10 @@ You can find the panel inside the Image Editor window, where it is called "Mirro
 - Overlapping UVs can likely cause errors or unintended effects
 - Addon isn't airtight on user input, meaning the user can make changes the addon doesn't account for. Examples include editing the object a mapping was made on after it was mapped, resulting in the mapping being outdated but still used.
 
+## Bugs:
+- mirroring using the non-baking mirror methods in both 2D and 3D seems unable to mirror to the very edge of the texture (meaning last column of pixels isn't mirrored to)
+- line thickness variable does not seem to work for the symmetry line
+
 ## Possible future features:
 - gpu accelerated or parallized processing using the gpu library for 2D mirroring
 - loading bar instead of freezing blender using a modal
