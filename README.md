@@ -1,10 +1,11 @@
 # MirrorInImageEditorBlender
 An addon for blender that allows mirroring of the image in the image editor
 
-Can install by from Blender's addon menu by pressing install and then selecting the python file (MirrorAddon.py) as the addon. Then check the box for the addon that is added.
+Can install by from Blender's addon menu by pressing install and then selecting the python file (MirrorAddon.py) as the addon. Then check the box for the addon that is added (newer versions of blender default to activating after installing).
 You can find the panel inside the Image Editor window, where it is called "Mirroring".
 
 ## How to use:
+- Install the MirrorAddon.py file (can download all of the code from the code button or select the MirrorAddon.py file and use the ... button to select download)
 - Instructions for use are included in Instructions.txt
 
 ## Current Features:
@@ -30,8 +31,9 @@ You can find the panel inside the Image Editor window, where it is called "Mirro
 - Addon isn't airtight on user input, meaning the user can make changes the addon doesn't account for. Examples include editing the object a mapping was made on after it was mapped, resulting in the mapping being outdated but still used.
 
 ## Bugs:
-- mirroring using the non-baking mirror methods in both 2D and 3D seems unable to mirror to the very edge of the texture (meaning last column of pixels isn't mirrored to)
+- mirroring using the non-baking mirror methods in 3D seems unable to mirror to the very edge of the texture (meaning last column of pixels isn't mirrored to)
 - line thickness variable does not seem to work for the symmetry line
+- 2D mirroring can mirror into adjacent tiles, resulting in mirrors back onto the existing tile (possible UV tiling issue with Blender, but likely preventable by catching values outside of 0-1 range)
 
 ## Possible future features:
 - gpu accelerated or parallized processing using the gpu library for 2D mirroring
