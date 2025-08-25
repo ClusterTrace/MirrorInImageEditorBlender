@@ -30,25 +30,17 @@ from gpu_extras.batch import batch_for_shader
 
 timeDebug = True # Variable for checking the run times of the functions
 
-# Update from previous version:
-#- Updated capture attribute node linkings, as api related to the capture attribute node changed in newer blender version
-
 
 # To Do:
-#- See if can improve how variables are stored
-#- See if can speed up performace (geonode is slow and random delays at beginning (might be snapshotting), also try adding multithreading/gpu acceleration (maybe use CuPY)
-#- Look into using models for operators to create tools for image editor
-#- make option so the changes made are done via copying the changes (with limits to prevent going out of bounds for colors). This should help fix issues at mirror points. Or make it so it doesn't mirror if pixels are on the wrong side of the character (like only mirror left side of character by checking the mirror location of the point on the model, then comparing it with what side is suposed to be changing)
-#- Can make it so mirrored changes are added to the mirror map (allows slowly adding to the mirror map, but would require checking if the map supported those pixels)
 #- look into making a loading bar and having blender not freeze up when mirroring large chunks or making the map
-#- Might not be able to mirror pixels for 2D mirroring to the pixels on the very edge (likely a < to <=)
+#- mirroring for 2D seems to wrap the mirror to the other side of the texture if an unusual angle or position for the symmetry line is used (might be an absolute value or something is preventing a negative value from going through or just the effect of tiling for the UVs)
 
 #Known issues:
 #- drawing over the mirror axis line or drawing on both sides of the mirror can cause drawing that is likely unwanted
-#- 3D mirror sometimes has small pixel gaps caused by the point acquired from geometry nodes getting stuck on edges, as they stick outward more, or it is failing to read the corresponding pixel values for edges. Bandade fix is use a subdivision modifier before the geonodes so more face area exists or use Pixel Gap Fill
+#- 3D mirror sometimes has small pixel gaps caused by the point acquired from geometry nodes getting stuck on edges, as they stick outward more, or it is failing to read the corresponding pixel values for edges. Bandade fix is use a subdivision modifier so more face area exists or use Pixel Gap Fill
 #- 2D mirroring will create small pixel gaps when mirroring on angles that are not multiples of 45 degrees. Bandade fix is to use Pixel Gap Fill
 #- Addon has no way of telling if object it is using as a reference has had its geometry altered in between snapshot and mirror, which can cause undesired effects.
-#- Geometry nodes and scripts likely run on cpu, which means expensive parallel computations like UV maps are far slower than they are supposed to be. Can't run cpu in parallel properly apparently in Blender (only runs one thread at a time)
+#- Geometry nodes and scripts likely run on cpu, which means expensive normally parallel computations like UV maps are far slower than they are supposed to be. Can't run cpu in parallel properly apparently in Blender (only runs one thread at a time)
 #- Likely Doesn't work if there are overlapping UVs
 
 
@@ -805,10 +797,56 @@ def mirrorChangesFromSnapshots2D(snapshot1, snapshot2, image, axisAngle, xPositi
     length = math.floor(len(diff) / displace)
     for i in range(length):
         if diff[i * displace: i * displace + displace] != (0, 0, 0, 0): # if there is a change in a pixel
+            #tempUV = pixelToUV(i * displace, image.size[0], image.size[1]) # uv of current pixel
+            tempPixel = pixelNumToPixelCord(pixelNum = i * 4, sizeX = snapshot1.sizeX, sizeY = snapshot1.sizeY)
+            #tempUV = [tempUV[0] - xPosition, tempUV[1] - yPosition] # accounts for origin being at cursor
+            tempPixel[0] = tempPixel[0] - (xPosition * (snapshot1.sizeX - 1))
+            tempPixel[1] = tempPixel[1] - (yPosition * (snapshot1.sizeY - 1))
+            newPixel = convertBasis2D(np.array(tempPixel), newBase) # converts to new base using the invert of the newBase
+            newPixel[1] = (newPixel[1] * -1) # inverts y cordinate to mirror
+            newPixel = newPixel.dot(newBase) # converts back to standard base by multiplying the value by its base (since its base is a representation from standard base)
+            # changes origin back to the bottom left of the UV
+            newPixel[0] = newPixel[0] + (xPosition * (snapshot1.sizeX - 1))
+            newPixel[1] = newPixel[1] + (yPosition * (snapshot1.sizeY - 1))
+            newPixel = [round(newPixel[0]), round(newPixel[1])]
+            if (mask == False):
+                updatePixel(snapshot3, newPixel, snapshot2.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
+            else:
+                updatePixel(snapshot3, newPixel, snapshot1.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
+
+    bpy.types.Scene.snapshotDiff = snapshot2.snapshotDifference(snapshot3) # stores difference for pixelGapFilling
+    #if (pixelGapFillVerticalLines): # does pixel gap fill if toggled
+        #pixelGapFillThreshold(snapshot2.snapshotDifference(snapshot3), snapshot3, threshold, selfBlend)
+    image.pixels = snapshot3.pixels # updates the textures pixels (very time expensive, so only done once at end)
+    return True
+
+# Old Float UV method that suffered from float precision issues causes slight pixel offsets and issues of pixel offsets related to texture boundary
+# Possibly fixable by scaling the UV cord to be the size of the texture to help reduce floating point precision issues
+# mirrors the changes from the snapshots, but does the mirror over the axis
+def mirrorChangesFromSnapshots2D_Old(snapshot1, snapshot2, image, axisAngle, xPosition, yPosition, mask = False):
+    if (image is None):
+        print("Error: No image is selected in image viewer")
+        return False
+
+    displace = 4
+    diff = snapshot1.snapshotDifference(snapshot2)
+    snapshot3 = None
+    if (mask == False):
+        snapshot3 = copy.deepcopy(snapshot2)
+    else:
+        snapshot3 = copy.deepcopy(snapshot1)
+    # create the new basis
+    newBase = newBasis(axisAngle)
+    # use new basis to create a rotation matrix
+    standardBase = np.array([[1, 0], [0, 1]])
+    # loop through pixels that changes, converting them into the new basis, then flipping them over the axis by inversing their Y value. Remember to move the axis origin to the xPosition, yPosition
+    length = math.floor(len(diff) / displace)
+    for i in range(length):
+        if diff[i * displace: i * displace + displace] != (0, 0, 0, 0): # if there is a change in a pixel
             tempUV = pixelToUV(i * displace, image.size[0], image.size[1]) # uv of current pixel
             tempUV = [tempUV[0] - xPosition, tempUV[1] - yPosition] # accounts for origin being at cursor
             newUV = convertBasis2D(np.array(tempUV), newBase) # converts to new base using the invert of the newBase
-            newUV[1] = (newUV[1] * -1) # inverts y cordinate
+            newUV[1] = (newUV[1] * -1) # inverts y cordinate to mirror
             newUV = newUV.dot(newBase) # converts back to standard base by multiplying the value by its base (since its base is a representation from standard base)
             # changes origin back to the bottom left of the UV
             newUV[0] = newUV[0] + xPosition
