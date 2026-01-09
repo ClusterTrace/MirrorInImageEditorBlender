@@ -13,7 +13,7 @@
 
 bl_info = {
     "name": "Mirrors Texture Changes",
-    "blender": (4,4,0),
+    "blender": (5,0,0),
     "category": "Texture",
 }
 
@@ -33,7 +33,6 @@ timeDebug = True # Variable for checking the run times of the functions
 
 # To Do:
 #- look into making a loading bar and having blender not freeze up when mirroring large chunks or making the map
-#- mirroring for 2D seems to wrap the mirror to the other side of the texture if an unusual angle or position for the symmetry line is used (might be an absolute value or something is preventing a negative value from going through or just the effect of tiling for the UVs)
 
 #Known issues:
 #- drawing over the mirror axis line or drawing on both sides of the mirror can cause drawing that is likely unwanted
@@ -617,16 +616,17 @@ def draw_symmetry_line_callback():
 #    print(f"Screen coordinates: bottom={line_screen_bottom}, top={line_screen_top}")
 
     # Draw the line using GPU
-    shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+    shader = gpu.shader.from_builtin('POLYLINE_UNIFORM_COLOR')
     vertices = (
         (line_screen_bottom[0], line_screen_bottom[1]),
         (line_screen_top[0], line_screen_top[1])
     )
     batch = batch_for_shader(shader, 'LINES', {"pos": vertices})
 
-    shader.bind()
+    #shader.bind() # Not used in newer blender version
+    shader.uniform_float("viewportSize", gpu.state.viewport_get()[2:])
     shader.uniform_float("color", props.color)
-    gpu.state.line_width_set(props.line_thickness)
+    shader.uniform_float("lineWidth", props.line_thickness)
     batch.draw(shader)
 
 # draws the symmetry line by inverting the pixels that lie upon it
@@ -777,7 +777,7 @@ def mirrorChangesFromSnapshotUsingBakingWithMask(snapshot1, snapshot2, obj, imag
 
 
 # mirrors the changes from the snapshots, but does the mirror over the axis
-def mirrorChangesFromSnapshots2D(snapshot1, snapshot2, image, axisAngle, xPosition, yPosition, mask = False):
+def mirrorChangesFromSnapshots2D(snapshot1, snapshot2, image, axisAngle, xPosition, yPosition, mask = False, preventOutsidePixels = False):
     if (image is None):
         print("Error: No image is selected in image viewer")
         return False
@@ -809,10 +809,13 @@ def mirrorChangesFromSnapshots2D(snapshot1, snapshot2, image, axisAngle, xPositi
             newPixel[0] = newPixel[0] + (xPosition * (snapshot1.sizeX - 1))
             newPixel[1] = newPixel[1] + (yPosition * (snapshot1.sizeY - 1))
             newPixel = [round(newPixel[0]), round(newPixel[1])]
-            if (mask == False):
-                updatePixel(snapshot3, newPixel, snapshot2.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
-            else:
-                updatePixel(snapshot3, newPixel, snapshot1.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
+            outX = (newPixel[0] < 0 or newPixel[0] > (snapshot1.sizeX - 1))
+            outY = (newPixel[1] < 0 or newPixel[1] > (snapshot1.sizeY - 1))
+            if (not(outX or outY) or not(preventOutsidePixels)): # for preventing placing pixels that are outside the visible tile to preventing accidental tiling in 2D mirror
+                if (mask == False):
+                    updatePixel(snapshot3, newPixel, snapshot2.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
+                else:
+                    updatePixel(snapshot3, newPixel, snapshot1.pixels[i * displace : i * displace + displace]) # updates pixel in snapshot
 
     bpy.types.Scene.snapshotDiff = snapshot2.snapshotDifference(snapshot3) # stores difference for pixelGapFilling
     #if (pixelGapFillVerticalLines): # does pixel gap fill if toggled
@@ -876,6 +879,8 @@ class MirrorChanges2D(bpy.types.Operator):
         axisAngle = myPointers.axisAngle2D
         xValue = myPointers.position2Dx
         yValue = myPointers.position2Dy
+        mask = False
+        preventOutsidePixels = myPointers.preventOutsidePixelsIn2D
 
         # grabs current selected image in image editor
         startTime = time.time()
@@ -883,7 +888,7 @@ class MirrorChanges2D(bpy.types.Operator):
             if area.type == 'IMAGE_EDITOR':
                 image = area.spaces.active.image
                 snapshotChanges = textureSnapshot(image)# snapshots it, storing it in a value
-                mirrorChangesFromSnapshots2D(bpy.types.Scene.snapshotOfOriginal, snapshotChanges, image, axisAngle, xValue, yValue) # should make axis an input
+                mirrorChangesFromSnapshots2D(bpy.types.Scene.snapshotOfOriginal, snapshotChanges, image, axisAngle, xValue, yValue, mask, preventOutsidePixels) # should make axis an input
         if (timeDebug): # TIME
             print("MirrorChanges2D time: " + str(time.time() - startTime))
         return {'FINISHED'} # Tells blender the operation is done
@@ -908,6 +913,8 @@ class MirrorChanges2DAsMask(bpy.types.Operator):
         axisAngle = myPointers.axisAngle2D
         xValue = myPointers.position2Dx
         yValue = myPointers.position2Dy
+        mask = True
+        preventOutsidePixels = myPointers.preventOutsidePixelsIn2D
 
         # grabs current selected image in image editor
         startTime = time.time()
@@ -915,7 +922,7 @@ class MirrorChanges2DAsMask(bpy.types.Operator):
             if area.type == 'IMAGE_EDITOR':
                 image = area.spaces.active.image
                 snapshotChanges = textureSnapshot(image)# snapshots it, storing it in a value
-                mirrorChangesFromSnapshots2D(bpy.types.Scene.snapshotOfOriginal, snapshotChanges, image, axisAngle, xValue, yValue, mask = True) # should make axis an input
+                mirrorChangesFromSnapshots2D(bpy.types.Scene.snapshotOfOriginal, snapshotChanges, image, axisAngle, xValue, yValue, mask, preventOutsidePixels) # should make axis an input
         if (timeDebug): # TIME
             print("MirrorChanges2DAsMask time: " + str(time.time() - startTime))
         return {'FINISHED'} # Tells blender the operation is done
@@ -1324,6 +1331,12 @@ class MirrorAddonPointers(bpy.types.PropertyGroup):
         min = 0,
         max = 360,
     )
+    
+    preventOutsidePixelsIn2D : bpy.props.BoolProperty(
+        name = "Prevent Placing Outside Tile",
+        description = "Toggles whether the 2D mirror should allow placing pixels outside the tile (useful to prevent mirroring from wrapping)",
+        default = True,
+    )
 
     pixelGapFillVerticalLines : bpy.props.BoolProperty(
         name = "Pixel Gap Fill Vertical Lines",
@@ -1417,6 +1430,7 @@ class MirrorAddonPanel(bpy.types.Panel):
         b2row2.prop(myPointers, "position2Dy")
         b2row3 = box2.row()
         b2row3.prop(myPointers, "axisAngle2D")
+        b2row3.prop(myPointers, "preventOutsidePixelsIn2D")
         b2row4 = box2.row()
         #b2row4.operator("image.draw_symmetry_line")
         # Controls
